@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import TheWelcome from '../components/TheWelcome.vue'
+import OCRDetect from '../components/OCRDetect.vue'
 </script>
 
 <template>
   <main>
-    <TheWelcome />
+    <OCRDetect />
   </main>
 </template>

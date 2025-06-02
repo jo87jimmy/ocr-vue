@@ -17,6 +17,7 @@ interface Item {
 const items: Ref<Item[]> = ref([])
 
 const dialogVisible = ref(false)
+const detectDialogVisible = ref(false) // 用於顯示檢測結果的 Dialog
 const currentItem: Ref<Partial<Item>> = ref({ id: null, text: '' })
 const isEditing = ref(false)
 
@@ -60,6 +61,7 @@ function addResult(result: string) {
 // Ref 變數定義
 const fileInput = ref<HTMLInputElement | null>(null)
 const imageBase64 = ref<string | null>(null)
+const imageBase64response = ref<string | null>(null)
 const imageLoaded = ref<boolean>(false)
 const statusMessage = ref<string>('')
 const showResponse = ref<string | null>(null)
@@ -104,19 +106,19 @@ const sendCanvasToGolangOCR = async () => {
       method: 'POST',
       body: formData,
     })
-
     if (!response.ok) {
       throw new Error('上傳失敗')
     }
     const result = await response.json()
+    imageBase64response.value = `data:${file.type};base64,${result.image_base64}` // 假設後端回傳的圖片 base64
     toast.add({ severity: 'success', summary: '成功', detail: 'OCR 結果已收到', life: 3000 })
-    showResponse.value = JSON.stringify(result, null, 2) // 格式化顯示結果
-    debugger
-    result.forEach((text: any) => {
+    showResponse.value = JSON.stringify(result.filtered_texts, null, 2) // 格式化顯示結果
+    result.filtered_texts.forEach((text: any) => {
       addResult(text)
     })
-    console.log('OCR 結果:', result)
+    console.log('OCR 結果:', result.filtered_texts)
     statusMessage.value = '圖片處理完成'
+    detectDialogVisible.value = true // 顯示檢測結果對話框
   } catch (err) {
     console.error(err)
     toast.add({ severity: 'error', summary: '錯誤', detail: '上傳圖片失敗', life: 3000 })
@@ -146,6 +148,8 @@ const onFileChange = async (event: Event) => {
       await processImage()
       imageLoaded.value = true
       statusMessage.value = '圖片已載入'
+      imageBase64response.value = null // 清除之前的定位圖片
+      showResponse.value = null // 清除之前的回應
       toast.add({ severity: 'success', summary: '成功', detail: '圖片已載入', life: 3000 })
     } else {
       toast.add({ severity: 'error', summary: '錯誤', detail: '無法讀取圖片', life: 3000 })
@@ -194,53 +198,66 @@ const onFileChange = async (event: Event) => {
 
       <div class="flex mt-4 space-x-4">
         <!-- 顯示預覽圖片 -->
-        <div v-if="imageBase64" class="w-1/2">
-          <img :src="imageBase64" alt="預覽圖片" class="max-w-full max-h-96 border" />
+        <div class="w-1/2">
+          <!-- 如果有定位圖片，優先顯示 -->
+          <div v-if="imageBase64response" >
+            <img :src="imageBase64response" alt="定位圖片" class="border" />
+            <!-- <img :src="imageBase64response" alt="定位圖片" class="max-w-full max-h-96 border" /> -->
+          </div>
+          <!-- 沒有定位圖片才顯示原始圖片 -->
+          <div v-else-if="imageBase64" >
+            <img :src="imageBase64" alt="預覽圖片" class="border" />
+          </div>
         </div>
-
         <!-- 顯示後端回傳 -->
         <div class="w-1/2 whitespace-pre-wrap break-words border p-2">
           {{ showResponse }}
         </div>
       </div>
     </div>
+    <Dialog v-model:visible="detectDialogVisible" header="檢測結果" :modal="true" :style="{ width: '800px' }">
+      <div class="p-4">
+        <!-- 資料表格 -->
+        <DataTable
+          :value="items"
+          selectionMode="single"
+          @rowSelect="editItem"
+          dataKey="id"
+          size="small"
+        >
+          <Column field="id" header="ID" />
+          <Column field="text" header="內容" />
+          <Column header="操作">
+            <template #body="slotProps">
+              <Button icon="pi pi-pencil" class="mr-2" @click="editItem(slotProps.data)" />
+              <Button icon="pi pi-trash" severity="danger" @click="deleteItem(slotProps.data)" />
+            </template>
+          </Column>
+        </DataTable>
 
-    <div class="p-4">
-      <!-- 資料表格 -->
-      <DataTable
-        :value="items"
-        selectionMode="single"
-        @rowSelect="editItem"
-        dataKey="id"
-        size="small"
-      >
-        <Column field="id" header="ID" />
-        <Column field="text" header="內容" />
-        <Column header="操作">
-          <template #body="slotProps">
-            <Button icon="pi pi-pencil" class="mr-2" @click="editItem(slotProps.data)" />
-            <Button icon="pi pi-trash" severity="danger" @click="deleteItem(slotProps.data)" />
+        <!-- 編輯 Dialog -->
+        <Dialog
+          v-model:visible="dialogVisible"
+          header="項目內容"
+          :modal="true"
+          :style="{ width: '400px' }"
+        >
+          <div class="flex flex-col gap-3">
+            <label for="text">內容：</label>
+            <InputText id="text" v-model="currentItem.text" class="w-full" />
+          </div>
+          <template #footer>
+            <Button label="取消" icon="pi pi-times" text @click="dialogVisible = false" />
+            <Button label="儲存" icon="pi pi-check" @click="saveItem" />
           </template>
-        </Column>
-      </DataTable>
-
-      <!-- 編輯 Dialog -->
-      <Dialog
-        v-model:visible="dialogVisible"
-        header="項目內容"
-        :modal="true"
-        :style="{ width: '400px' }"
-      >
-        <div class="flex flex-col gap-3">
-          <label for="text">內容：</label>
-          <InputText id="text" v-model="currentItem.text" class="w-full" />
-        </div>
-        <template #footer>
-          <Button label="取消" icon="pi pi-times" text @click="dialogVisible = false" />
-          <Button label="儲存" icon="pi pi-check" @click="saveItem" />
-        </template>
-      </Dialog>
-    </div>
+        </Dialog>
+      </div>
+      <template #footer>
+        <Button label="取消" icon="pi pi-times" text @click="detectDialogVisible = false;" />
+        <!-- todo insertData -->
+        <Button label="寫入" icon="pi pi-check" @click="insertData" />
+      </template>
+    </Dialog>
 
     <Toast />
   </div>
