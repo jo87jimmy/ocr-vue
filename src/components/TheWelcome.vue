@@ -1,95 +1,134 @@
 <script setup lang="ts">
-import WelcomeItem from './WelcomeItem.vue'
-import DocumentationIcon from './icons/IconDocumentation.vue'
-import ToolingIcon from './icons/IconTooling.vue'
-import EcosystemIcon from './icons/IconEcosystem.vue'
-import CommunityIcon from './icons/IconCommunity.vue'
-import SupportIcon from './icons/IconSupport.vue'
+import { ref, inject } from 'vue'
+import Button from 'primevue/button'
 
-const openReadmeInEditor = () => fetch('/__open-in-editor?file=README.md')
+// Ref 變數定義
+const fileInput = ref<HTMLInputElement | null>(null)
+const imageBase64 = ref<string | null>(null)
+const imageLoaded = ref<boolean>(false)
+const statusMessage = ref<string>('')
+
+// 從 inject 拿 toast（建議在 main.ts 中用 provide 定義）
+const toast = inject('toast') as {
+  add: (options: { severity: string; summary: string; detail: string; life: number }) => void
+}
+if (!toast) {
+  throw new Error('Toast 插件未正確提供')
+}
+
+// 假設這是你要執行的處理函數
+const processImage = async () => {
+  // 模擬圖片處理（實際可改為前端影像處理邏輯）
+  return new Promise<void>((resolve) => setTimeout(resolve, 1000))
+}
+
+// 假設這是你要將圖片送到後端的函數
+const sendCanvasToGolangOCR = async () => {
+  if (!imageBase64.value) return
+
+  statusMessage.value = '圖片上傳中...'
+
+  try {
+    const response = await fetch('http://localhost:1323/api/ocr', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ image: imageBase64.value }),
+    })
+
+    if (!response.ok) {
+      throw new Error('上傳失敗')
+    }
+
+    const result = await response.json()
+    toast.add({ severity: 'success', summary: '成功', detail: 'OCR 結果已收到', life: 3000 })
+    console.log('OCR 結果:', result)
+    statusMessage.value = '圖片處理完成'
+  } catch (err) {
+    console.error(err)
+    toast.add({ severity: 'error', summary: '錯誤', detail: '上傳圖片失敗', life: 3000 })
+    statusMessage.value = '圖片處理失敗'
+  }
+}
+
+// 點擊按鈕觸發 input
+const triggerFileInput = () => {
+  fileInput.value?.click()
+}
+
+// 圖片選擇事件
+const onFileChange = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  statusMessage.value = '正在載入圖片...'
+
+  const reader = new FileReader()
+
+  reader.onload = async (e: ProgressEvent<FileReader>) => {
+    const result = e.target?.result
+    if (typeof result === 'string') {
+      imageBase64.value = result
+      await processImage()
+      imageLoaded.value = true
+      statusMessage.value = '圖片已載入'
+      toast.add({ severity: 'success', summary: '成功', detail: '圖片已載入', life: 3000 })
+    } else {
+      toast.add({ severity: 'error', summary: '錯誤', detail: '無法讀取圖片', life: 3000 })
+      statusMessage.value = '圖片讀取失敗'
+    }
+  }
+
+  reader.readAsDataURL(file)
+}
 </script>
 
 <template>
-  <WelcomeItem>
-    <template #icon>
-      <DocumentationIcon />
-    </template>
-    <template #heading>Documentation</template>
+  <div class="container p-4">
+    <h1 class="text-lg font-bold mb-4">OCR 處理工具</h1>
+    <div class="grid">
+      <div class="mb-4">
+        <!-- 上傳圖片按鈕 -->
+        <Button
+          label="選擇檔案"
+          icon="pi pi-upload"
+          class="p-button-info mr-2"
+          @click="triggerFileInput"
+        />
+        <!-- 隱藏 input[type=file] -->
+        <input
+          ref="fileInput"
+          type="file"
+          accept="image/*"
+          @change="onFileChange"
+          style="display: none"
+        />
 
-    Vue’s
-    <a href="https://vuejs.org/" target="_blank" rel="noopener">official documentation</a>
-    provides you with all information you need to get started.
-  </WelcomeItem>
+        <!-- 發送圖片按鈕 -->
+        <Button
+          label="發送圖片給後端"
+          class="p-button-success"
+          :disabled="!imageLoaded"
+          @click="sendCanvasToGolangOCR"
+        />
 
-  <WelcomeItem>
-    <template #icon>
-      <ToolingIcon />
-    </template>
-    <template #heading>Tooling</template>
+        <!-- 狀態文字 -->
+        <span class="ml-4 text-sm text-gray-500">{{ statusMessage }}</span>
+      </div>
 
-    This project is served and bundled with
-    <a href="https://vite.dev/guide/features.html" target="_blank" rel="noopener">Vite</a>. The
-    recommended IDE setup is
-    <a href="https://code.visualstudio.com/" target="_blank" rel="noopener">VSCode</a>
-    +
-    <a href="https://github.com/vuejs/language-tools" target="_blank" rel="noopener"
-      >Vue - Official</a
-    >. If you need to test your components and web pages, check out
-    <a href="https://vitest.dev/" target="_blank" rel="noopener">Vitest</a>
-    and
-    <a href="https://www.cypress.io/" target="_blank" rel="noopener">Cypress</a>
-    /
-    <a href="https://playwright.dev/" target="_blank" rel="noopener">Playwright</a>.
-
-    <br />
-
-    More instructions are available in
-    <a href="javascript:void(0)" @click="openReadmeInEditor"><code>README.md</code></a
-    >.
-  </WelcomeItem>
-
-  <WelcomeItem>
-    <template #icon>
-      <EcosystemIcon />
-    </template>
-    <template #heading>Ecosystem</template>
-
-    Get official tools and libraries for your project:
-    <a href="https://pinia.vuejs.org/" target="_blank" rel="noopener">Pinia</a>,
-    <a href="https://router.vuejs.org/" target="_blank" rel="noopener">Vue Router</a>,
-    <a href="https://test-utils.vuejs.org/" target="_blank" rel="noopener">Vue Test Utils</a>, and
-    <a href="https://github.com/vuejs/devtools" target="_blank" rel="noopener">Vue Dev Tools</a>. If
-    you need more resources, we suggest paying
-    <a href="https://github.com/vuejs/awesome-vue" target="_blank" rel="noopener">Awesome Vue</a>
-    a visit.
-  </WelcomeItem>
-
-  <WelcomeItem>
-    <template #icon>
-      <CommunityIcon />
-    </template>
-    <template #heading>Community</template>
-
-    Got stuck? Ask your question on
-    <a href="https://chat.vuejs.org" target="_blank" rel="noopener">Vue Land</a>
-    (our official Discord server), or
-    <a href="https://stackoverflow.com/questions/tagged/vue.js" target="_blank" rel="noopener"
-      >StackOverflow</a
-    >. You should also follow the official
-    <a href="https://bsky.app/profile/vuejs.org" target="_blank" rel="noopener">@vuejs.org</a>
-    Bluesky account or the
-    <a href="https://x.com/vuejs" target="_blank" rel="noopener">@vuejs</a>
-    X account for latest news in the Vue world.
-  </WelcomeItem>
-
-  <WelcomeItem>
-    <template #icon>
-      <SupportIcon />
-    </template>
-    <template #heading>Support Vue</template>
-
-    As an independent project, Vue relies on community backing for its sustainability. You can help
-    us by
-    <a href="https://vuejs.org/sponsor/" target="_blank" rel="noopener">becoming a sponsor</a>.
-  </WelcomeItem>
+      <!-- 顯示預覽圖片 -->
+      <div v-if="imageBase64" class="mt-4">
+        <img :src="imageBase64" alt="預覽圖片" class="max-w-full max-h-96 border" />
+      </div>
+    </div>
+  </div>
 </template>
+
+<style scoped>
+.container {
+  max-width: 800px;
+  margin: auto;
+}
+</style>

@@ -20,15 +20,23 @@ export default defineConfigWithVueTs(
 
   pluginVue.configs['flat/essential'],
   vueTsConfigs.recommended,
-  
+
   {
     ...pluginVitest.configs.recommended,
     files: ['src/**/__tests__/*'],
   },
-  
+
   {
     ...pluginPlaywright.configs['flat/recommended'],
     files: ['e2e/**/*.{test,spec}.{js,ts,jsx,tsx}'],
   },
   skipFormatting,
+  {
+    rules: {
+      //蔡- eslint文件要multiple-word 關掉
+      'vue/multi-word-component-names': 'off',
+      //蔡- 開發期間在趕時間先關閉，後面再來修正
+      "@typescript-eslint/no-explicit-any": "off"
+    },
+  },
 )
