@@ -7,6 +7,7 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const imageBase64 = ref<string | null>(null)
 const imageLoaded = ref<boolean>(false)
 const statusMessage = ref<string>('')
+const showResponse = ref<string | null>(null)
 
 // 從 inject 拿 toast（建議在 main.ts 中用 provide 定義）
 const toast = inject('toast') as {
@@ -55,6 +56,7 @@ const sendCanvasToGolangOCR = async () => {
     debugger
     const result = await response.json()
     toast.add({ severity: 'success', summary: '成功', detail: 'OCR 結果已收到', life: 3000 })
+    showResponse.value = JSON.stringify(result, null, 2) // 格式化顯示結果
     console.log('OCR 結果:', result)
     statusMessage.value = '圖片處理完成'
   } catch (err) {
@@ -63,34 +65,6 @@ const sendCanvasToGolangOCR = async () => {
     statusMessage.value = '圖片處理失敗'
   }
 }
-// const sendCanvasToGolangOCR = async () => {
-//   if (!imageBase64.value) return
-
-//   statusMessage.value = '圖片上傳中...'
-
-//   try {
-//     const response = await fetch('http://localhost:9536/api/ai/image/orc/text', {
-//       method: 'POST',
-//       headers: {
-//         'Content-Type': 'application/json',
-//       },
-//       body: JSON.stringify({ image: imageBase64.value }),
-//     })
-//     debugger
-//     if (!response.ok) {
-//       throw new Error('上傳失敗')
-//     }
-//     debugger
-//     const result = await response.json()
-//     toast.add({ severity: 'success', summary: '成功', detail: 'OCR 結果已收到', life: 3000 })
-//     console.log('OCR 結果:', result)
-//     statusMessage.value = '圖片處理完成'
-//   } catch (err) {
-//     console.error(err)
-//     toast.add({ severity: 'error', summary: '錯誤', detail: '上傳圖片失敗', life: 3000 })
-//     statusMessage.value = '圖片處理失敗'
-//   }
-// }
 
 // 點擊按鈕觸發 input
 const triggerFileInput = () => {
@@ -123,6 +97,9 @@ const onFileChange = async (event: Event) => {
 
   reader.readAsDataURL(file)
 }
+// const show = () => {
+//   toast.add({ severity: 'info', summary: 'Info', detail: 'Message Content', life: 3000 })
+// }
 </script>
 
 <template>
@@ -163,6 +140,9 @@ const onFileChange = async (event: Event) => {
         <img :src="imageBase64" alt="預覽圖片" class="max-w-full max-h-96 border" />
       </div>
     </div>
+    <div>{{ showResponse }}</div>
+    <Toast />
+    <!-- <Button label="Show" @click="show()" /> -->
   </div>
 </template>
 
