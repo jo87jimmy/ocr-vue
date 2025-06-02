@@ -29,18 +29,30 @@ const sendCanvasToGolangOCR = async () => {
   statusMessage.value = '圖片上傳中...'
 
   try {
-    const response = await fetch('http://localhost:1323/api/ocr', {
+    // 將 base64 轉成 Blob（圖片）
+    const byteString = atob(imageBase64.value.split(',')[1])
+    const mimeString = imageBase64.value.split(',')[0].split(':')[1].split(';')[0]
+    const ab = new ArrayBuffer(byteString.length)
+    const ia = new Uint8Array(ab)
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i)
+    }
+    const blob = new Blob([ab], { type: mimeString })
+    const file = new File([blob], 'upload.png', { type: mimeString })
+
+    // 準備 FormData
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await fetch('http://localhost:9536/api/ai/image/orc/text', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ image: imageBase64.value }),
+      body: formData,
     })
 
     if (!response.ok) {
       throw new Error('上傳失敗')
     }
-
+    debugger
     const result = await response.json()
     toast.add({ severity: 'success', summary: '成功', detail: 'OCR 結果已收到', life: 3000 })
     console.log('OCR 結果:', result)
@@ -51,6 +63,34 @@ const sendCanvasToGolangOCR = async () => {
     statusMessage.value = '圖片處理失敗'
   }
 }
+// const sendCanvasToGolangOCR = async () => {
+//   if (!imageBase64.value) return
+
+//   statusMessage.value = '圖片上傳中...'
+
+//   try {
+//     const response = await fetch('http://localhost:9536/api/ai/image/orc/text', {
+//       method: 'POST',
+//       headers: {
+//         'Content-Type': 'application/json',
+//       },
+//       body: JSON.stringify({ image: imageBase64.value }),
+//     })
+//     debugger
+//     if (!response.ok) {
+//       throw new Error('上傳失敗')
+//     }
+//     debugger
+//     const result = await response.json()
+//     toast.add({ severity: 'success', summary: '成功', detail: 'OCR 結果已收到', life: 3000 })
+//     console.log('OCR 結果:', result)
+//     statusMessage.value = '圖片處理完成'
+//   } catch (err) {
+//     console.error(err)
+//     toast.add({ severity: 'error', summary: '錯誤', detail: '上傳圖片失敗', life: 3000 })
+//     statusMessage.value = '圖片處理失敗'
+//   }
+// }
 
 // 點擊按鈕觸發 input
 const triggerFileInput = () => {
