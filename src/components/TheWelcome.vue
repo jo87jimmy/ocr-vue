@@ -1,6 +1,61 @@
 <script setup lang="ts">
 import { ref, inject } from 'vue'
+import type { Ref } from 'vue'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
+
+// 資料型別定義
+interface Item {
+  id: number
+  text: string
+}
+
+// 使用 reactive ref 作為唯一資料來源
+const items: Ref<Item[]> = ref([])
+
+const dialogVisible = ref(false)
+const currentItem: Ref<Partial<Item>> = ref({ id: null, text: '' })
+const isEditing = ref(false)
+
+// function openNew() {
+//   currentItem.value = { id: null, text: '' }
+//   isEditing.value = false
+//   dialogVisible.value = true
+// }
+
+function editItem(item: Item) {
+  currentItem.value = { ...item }
+  isEditing.value = true
+  dialogVisible.value = true
+}
+
+function saveItem() {
+  if (!currentItem.value.text?.trim()) return
+
+  if (isEditing.value && currentItem.value.id != null) {
+    const index = items.value.findIndex((i) => i.id === currentItem.value.id)
+    if (index !== -1) {
+      items.value[index] = { ...(currentItem.value as Item) }
+    }
+  } else {
+    const newId = Math.max(0, ...items.value.map((i) => i.id)) + 1
+    items.value.push({ id: newId, text: currentItem.value.text! })
+  }
+  dialogVisible.value = false
+}
+
+function deleteItem(item: Item) {
+  items.value = items.value.filter((i) => i.id !== item.id)
+}
+
+// ✅ 若你有類似 result.text 的新資料要加入
+function addResult(result: string) {
+  const newId = Math.max(0, ...items.value.map((i) => i.id)) + 1
+  items.value.push({ id: newId, text: result })
+}
 
 // Ref 變數定義
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -53,10 +108,13 @@ const sendCanvasToGolangOCR = async () => {
     if (!response.ok) {
       throw new Error('上傳失敗')
     }
-    debugger
     const result = await response.json()
     toast.add({ severity: 'success', summary: '成功', detail: 'OCR 結果已收到', life: 3000 })
     showResponse.value = JSON.stringify(result, null, 2) // 格式化顯示結果
+    debugger
+    result.forEach((text: any) => {
+      addResult(text)
+    })
     console.log('OCR 結果:', result)
     statusMessage.value = '圖片處理完成'
   } catch (err) {
@@ -97,14 +155,12 @@ const onFileChange = async (event: Event) => {
 
   reader.readAsDataURL(file)
 }
-// const show = () => {
-//   toast.add({ severity: 'info', summary: 'Info', detail: 'Message Content', life: 3000 })
-// }
 </script>
 
 <template>
   <div class="container p-4">
-    <h1 class="text-lg font-bold mb-4">OCR 處理工具</h1>
+    <h1 class="text-lg font-bold mb-4">OCR 發票處理</h1>
+
     <div class="grid">
       <div class="mb-4">
         <!-- 上傳圖片按鈕 -->
@@ -114,6 +170,7 @@ const onFileChange = async (event: Event) => {
           class="p-button-info mr-2"
           @click="triggerFileInput"
         />
+
         <!-- 隱藏 input[type=file] -->
         <input
           ref="fileInput"
@@ -135,20 +192,63 @@ const onFileChange = async (event: Event) => {
         <span class="ml-4 text-sm text-gray-500">{{ statusMessage }}</span>
       </div>
 
-      <!-- 顯示預覽圖片 -->
-      <div v-if="imageBase64" class="mt-4">
-        <img :src="imageBase64" alt="預覽圖片" class="max-w-full max-h-96 border" />
+      <div class="flex mt-4 space-x-4">
+        <!-- 顯示預覽圖片 -->
+        <div v-if="imageBase64" class="w-1/2">
+          <img :src="imageBase64" alt="預覽圖片" class="max-w-full max-h-96 border" />
+        </div>
+
+        <!-- 顯示後端回傳 -->
+        <div class="w-1/2 whitespace-pre-wrap break-words border p-2">
+          {{ showResponse }}
+        </div>
       </div>
     </div>
-    <div>{{ showResponse }}</div>
+
+    <div class="p-4">
+      <!-- 資料表格 -->
+      <DataTable
+        :value="items"
+        selectionMode="single"
+        @rowSelect="editItem"
+        dataKey="id"
+        size="small"
+      >
+        <Column field="id" header="ID" />
+        <Column field="text" header="內容" />
+        <Column header="操作">
+          <template #body="slotProps">
+            <Button icon="pi pi-pencil" class="mr-2" @click="editItem(slotProps.data)" />
+            <Button icon="pi pi-trash" severity="danger" @click="deleteItem(slotProps.data)" />
+          </template>
+        </Column>
+      </DataTable>
+
+      <!-- 編輯 Dialog -->
+      <Dialog
+        v-model:visible="dialogVisible"
+        header="項目內容"
+        :modal="true"
+        :style="{ width: '400px' }"
+      >
+        <div class="flex flex-col gap-3">
+          <label for="text">內容：</label>
+          <InputText id="text" v-model="currentItem.text" class="w-full" />
+        </div>
+        <template #footer>
+          <Button label="取消" icon="pi pi-times" text @click="dialogVisible = false" />
+          <Button label="儲存" icon="pi pi-check" @click="saveItem" />
+        </template>
+      </Dialog>
+    </div>
+
     <Toast />
-    <!-- <Button label="Show" @click="show()" /> -->
   </div>
 </template>
 
 <style scoped>
 .container {
-  max-width: 800px;
+  /* max-width: 800px; */
   margin: auto;
 }
 </style>
