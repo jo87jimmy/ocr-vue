@@ -27,7 +27,7 @@ const masterItems: Ref<MasterItem[]> = ref([])
 const items: Ref<Item[]> = ref([])
 const dialogVisible = ref(false)
 const detectDialogVisible = ref(false) // 用於顯示檢測結果的 Dialog
-const currentItem: Ref<Partial<Item>> = ref({ id: null, text: '' })
+const currentItem: Ref<Partial<Item>> = ref({ id: undefined, text: '' })
 const isEditing = ref(false)
 
 // function openNew() {
