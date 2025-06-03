@@ -12,10 +12,19 @@ interface Item {
   id: number
   text: string
 }
+interface MasterItem {
+  id: number
+  compyname: string | null
+  ticketPeriod: string | null
+  ticketNo: string | null
+  amount: number | null
+  date: string | null
+}
 
+// 主資料來源
+const masterItems: Ref<MasterItem[]> = ref([])
 // 使用 reactive ref 作為唯一資料來源
 const items: Ref<Item[]> = ref([])
-
 const dialogVisible = ref(false)
 const detectDialogVisible = ref(false) // 用於顯示檢測結果的 Dialog
 const currentItem: Ref<Partial<Item>> = ref({ id: null, text: '' })
@@ -50,6 +59,30 @@ function saveItem() {
 
 function deleteItem(item: Item) {
   items.value = items.value.filter((i) => i.id !== item.id)
+}
+
+function insertData() {
+  // 將 items 的資料寫入到 masterItems
+  if (items.value.length === 0) {
+    toast.add({ severity: 'warn', summary: '警告', detail: '沒有資料可寫入', life: 3000 })
+    return
+  }
+  masterItems.value.push({
+    id: Math.max(0, ...masterItems.value.map((i) => i.id)) + 1,
+    compyname: items.value[0]?.text || null,
+    ticketPeriod: items.value[2]?.text || null,
+    ticketNo: items.value[3]?.text || null,
+    amount: extractNumbers(items.value[6]?.text || ''),
+    date: items.value[4]?.text || null,
+  })
+  items.value = [] // 清空 items
+  dialogVisible.value = false // 關閉編輯對話框
+  detectDialogVisible.value = false // 關閉檢測結果對話框
+}
+function extractNumbers(text: string): number | null {
+  // 將非數字字元與逗號移除，例如 "總計：3，390" → "3390"
+  const match = text.replace(/[^\d]/g, '')
+  return match ? parseInt(match, 10) : null
 }
 
 // ✅ 若你有類似 result.text 的新資料要加入
@@ -254,10 +287,18 @@ const onFileChange = async (event: Event) => {
       </div>
       <template #footer>
         <Button label="取消" icon="pi pi-times" text @click="detectDialogVisible = false;" />
-        <!-- todo insertData -->
         <Button label="寫入" icon="pi pi-check" @click="insertData" />
       </template>
     </Dialog>
+    <DataTable :value="masterItems"  dataKey="id" size="small">
+      <Column field="id" header="ID" />
+      <Column field="compyname" header="公司名" />
+      <Column field="ticketPeriod" header="票據期間" />
+      <Column field="ticketNo" header="票據號碼" />
+      <Column field="amount" header="金額" />
+      <Column field="date" header="日期" />
+      
+    </DataTable>
 
     <Toast />
   </div>
