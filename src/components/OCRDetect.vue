@@ -23,7 +23,6 @@ interface MasterItem {
 
 // 主資料來源
 const masterItems: Ref<MasterItem[]> = ref([])
-// 使用 reactive ref 作為唯一資料來源
 const items: Ref<Item[]> = ref([])
 const dialogVisible = ref(false)
 const detectDialogVisible = ref(false) // 用於顯示檢測結果的 Dialog
