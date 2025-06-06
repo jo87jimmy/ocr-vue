@@ -196,7 +196,7 @@ const onFileChange = async (event: Event) => {
 
 <template>
   <div class="container p-4">
-    <h1 class="text-lg font-bold mb-4">OCR 發票處理</h1>
+    <h1 class="text-lg font-bold mb-4">OCR 發票文字辨識檢測</h1>
 
     <div class="grid">
       <div class="mb-4">
