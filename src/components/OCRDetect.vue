@@ -30,12 +30,6 @@ const detectDialogVisible = ref(false) // 用於顯示檢測結果的 Dialog
 const currentItem: Ref<Partial<Item>> = ref({ id: undefined, text: '' })
 const isEditing = ref(false)
 
-// function openNew() {
-//   currentItem.value = { id: null, text: '' }
-//   isEditing.value = false
-//   dialogVisible.value = true
-// }
-
 function editItem(item: Item) {
   currentItem.value = { ...item }
   isEditing.value = true
